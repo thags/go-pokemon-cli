@@ -4,19 +4,31 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	pokeCache "pokedexcli/internal"
+	"strings"
+	"time"
 )
 
 func main() {
 	var conf config
+	reapingTime := 10 * time.Minute
+	conf.cache = *pokeCache.NewCache(reapingTime)
 
 	for true {
 		fmt.Print("pokedex > ")
 		reader := bufio.NewScanner(os.Stdin)
 		reader.Scan()
 		text := reader.Text()
-		command, exists := getCommand()[text]
+		inputCommand := strings.Split(text, " ")
+		command, exists := getCommand()[inputCommand[0]]
+
+		input := ""
+		if len(inputCommand) > 1 {
+			input = inputCommand[1]
+		}
+
 		if exists {
-			command.callback(&conf)
+			command.callback(&conf, input)
 		} else {
 			continue
 		}
@@ -26,14 +38,16 @@ func main() {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, string) error
 }
 
 type config struct {
-	currentMap pokeapiLocation
+	currentMap       pokeapiLocation
+	cache            pokeCache.PokeCache
+	currentEncounter PokemonEncounters
 }
 
-func commandHelp(*config) error {
+func commandHelp(*config, string) error {
 	fmt.Println("Command line interface for a pokedex.")
 	fmt.Println("\nCommands:")
 	fmt.Println("help: to display this message")
@@ -43,13 +57,13 @@ func commandHelp(*config) error {
 	return nil
 }
 
-func commandExit(*config) error {
+func commandExit(*config, string) error {
 	fmt.Println("Exiting...")
 	os.Exit(0)
 	return nil
 }
 
-func commandMap(conf *config) error {
+func commandMap(conf *config, input string) error {
 	fmt.Println("fetching data...")
 	err := GetNextMap(conf)
 	if err != nil {
@@ -64,7 +78,7 @@ func commandMap(conf *config) error {
 	return nil
 }
 
-func commandMapb(conf *config) error {
+func commandMapb(conf *config, input string) error {
 	fmt.Println("fetching data...")
 	err := GetLastMap(conf)
 	if err != nil {
@@ -76,6 +90,18 @@ func commandMapb(conf *config) error {
 		fmt.Println(r.Name)
 	}
 
+	return nil
+}
+
+func commandExplore(conf *config, name string) error {
+	err := GetEncounters(conf, name)
+	if err != nil {
+		return err
+	}
+
+	for _, encounter := range conf.currentEncounter {
+		fmt.Printf("    -%v\n", encounter.Pokemon.Name)
+	}
 	return nil
 }
 
@@ -101,6 +127,11 @@ func getCommand() map[string]cliCommand {
 			name:        "mapb",
 			description: "See the last 20 locations",
 			callback:    commandMapb,
+		},
+		"explore": {
+			name:        "explore",
+			description: "Explore an area and find pokemon",
+			callback:    commandExplore,
 		},
 	}
 }
