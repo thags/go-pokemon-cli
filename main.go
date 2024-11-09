@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	pokeCache "pokedexcli/internal"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 func main() {
 	var conf config
+	conf.pokemon = make(map[string]Pokemon)
 	reapingTime := 10 * time.Minute
 	conf.cache = *pokeCache.NewCache(reapingTime)
 
@@ -45,6 +47,7 @@ type config struct {
 	currentMap       pokeapiLocation
 	cache            pokeCache.PokeCache
 	currentEncounter PokemonEncounters
+	pokemon          map[string]Pokemon
 }
 
 func commandHelp(*config, string) error {
@@ -54,6 +57,9 @@ func commandHelp(*config, string) error {
 	fmt.Println("exit: to exit the interface")
 	fmt.Println("map: to display the first or next 20 locations")
 	fmt.Println("mapb: to display the last 20 locations")
+	fmt.Println("explore <location name>: find pokemon in the area")
+	fmt.Println("catch <pokemon name>: try to catch a pokemon")
+
 	return nil
 }
 
@@ -71,9 +77,7 @@ func commandMap(conf *config, input string) error {
 		return err
 	}
 
-	for _, r := range conf.currentMap.Results {
-		fmt.Println(r.Name)
-	}
+	printMap(conf)
 
 	return nil
 }
@@ -86,11 +90,16 @@ func commandMapb(conf *config, input string) error {
 		return err
 	}
 
-	for _, r := range conf.currentMap.Results {
-		fmt.Println(r.Name)
-	}
+	printMap(conf)
 
 	return nil
+}
+
+func printMap(conf *config) {
+	fmt.Println("You explored and found this locations:")
+	for _, r := range conf.currentMap.Results {
+		fmt.Printf("    - %v\n", r.Name)
+	}
 }
 
 func commandExplore(conf *config, name string) error {
@@ -101,6 +110,23 @@ func commandExplore(conf *config, name string) error {
 
 	for _, encounter := range conf.currentEncounter {
 		fmt.Printf("    -%v\n", encounter.Pokemon.Name)
+	}
+	return nil
+}
+
+func commandCatch(conf *config, name string) error {
+	pokemon, err := GetPokemon(conf, name)
+	if err != nil {
+		fmt.Println("You did not catch the pokemon, as it does not exist")
+		return nil
+	}
+
+	random := rand.Int() * rand.Int()
+	needednumber := pokemon.BaseExperience
+
+	if random >= needednumber {
+		conf.pokemon[pokemon.Name] = pokemon
+		fmt.Printf("You caught %v!\n", pokemon.Name)
 	}
 	return nil
 }
@@ -132,6 +158,11 @@ func getCommand() map[string]cliCommand {
 			name:        "explore",
 			description: "Explore an area and find pokemon",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Try to catch a pokemon, good luck!",
+			callback:    commandCatch,
 		},
 	}
 }
