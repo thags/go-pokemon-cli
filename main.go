@@ -172,6 +172,19 @@ func commandInspect(conf *config, name string) error {
 	return nil
 }
 
+func commandPokedex(conf *config, input string) error {
+	if len(conf.pokemon) == 0 {
+		fmt.Println("You have not caught anything yet. Go out there and catch something")
+		return nil
+	}
+
+	fmt.Println("Your Pokemon:")
+	for _, p := range conf.pokemon {
+		fmt.Printf("  -%v\n", p.Name)
+	}
+	return nil
+}
+
 func getCommand() map[string]cliCommand {
 
 	return map[string]cliCommand{
@@ -209,6 +222,11 @@ func getCommand() map[string]cliCommand {
 			name:        "inspect",
 			description: "Inspect a pokemon you have caught",
 			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "List all the pokemon you have caught",
+			callback:    commandPokedex,
 		},
 	}
 }
