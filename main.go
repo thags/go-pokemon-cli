@@ -53,12 +53,10 @@ type config struct {
 func commandHelp(*config, string) error {
 	fmt.Println("Command line interface for a pokedex.")
 	fmt.Println("\nCommands:")
-	fmt.Println("help: to display this message")
-	fmt.Println("exit: to exit the interface")
-	fmt.Println("map: to display the first or next 20 locations")
-	fmt.Println("mapb: to display the last 20 locations")
-	fmt.Println("explore <location name>: find pokemon in the area")
-	fmt.Println("catch <pokemon name>: try to catch a pokemon")
+	commands := getCommand()
+	for _, cmd := range commands {
+		fmt.Printf("  -%v: %v\n", cmd.name, cmd.description)
+	}
 
 	return nil
 }
@@ -103,6 +101,10 @@ func printMap(conf *config) {
 }
 
 func commandExplore(conf *config, name string) error {
+	if len(name) == 0 {
+		fmt.Println("Explore command also needs a name")
+		return nil
+	}
 	err := GetEncounters(conf, name)
 	if err != nil {
 		return err
@@ -115,6 +117,10 @@ func commandExplore(conf *config, name string) error {
 }
 
 func commandCatch(conf *config, name string) error {
+	if len(name) == 0 {
+		fmt.Println("Catch command also needs a name")
+		return nil
+	}
 	pokemon, err := GetPokemon(conf, name)
 	if err != nil {
 		fmt.Println("You did not catch the pokemon, as it does not exist")
@@ -124,10 +130,45 @@ func commandCatch(conf *config, name string) error {
 	random := rand.Int() * rand.Int()
 	needednumber := pokemon.BaseExperience
 
+	fmt.Println(".")
+	fmt.Println("...")
+	fmt.Println(".....")
+
 	if random >= needednumber {
 		conf.pokemon[pokemon.Name] = pokemon
 		fmt.Printf("You caught %v!\n", pokemon.Name)
+		return nil
 	}
+
+	fmt.Println("Drats! It got away!")
+	return nil
+}
+
+func commandInspect(conf *config, name string) error {
+	if len(name) == 0 {
+		fmt.Println("Inspect command also needs a name")
+		return nil
+	}
+	pokemon, exists := conf.pokemon[name]
+	if !exists {
+		fmt.Println("Either pokemon does not exist, or you have not caught it yet")
+		return nil
+	}
+
+	fmt.Printf("Pokemon information:\n")
+	fmt.Printf("Name: %v\n", pokemon.Name)
+	fmt.Printf("Height: %v\n", pokemon.Height)
+	fmt.Printf("Weight: %v\n", pokemon.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf("  -%v: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+
+	for t := range pokemon.Types {
+		fmt.Printf("  -%v\n", pokemon.Types[t].Type.Name)
+	}
+
 	return nil
 }
 
@@ -163,6 +204,11 @@ func getCommand() map[string]cliCommand {
 			name:        "catch",
 			description: "Try to catch a pokemon, good luck!",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect a pokemon you have caught",
+			callback:    commandInspect,
 		},
 	}
 }
